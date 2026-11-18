@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-MODEL = "gpt-4.1-nano"
+MODEL = "gpt-5.4-nano"
 DB_NAME = str(Path(__file__).parent.parent / "vector_db")
 
 # embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -52,10 +52,14 @@ def answer_question(question: str, history: list[dict] = []) -> tuple[str, list[
     """
     combined = combined_question(question, history)
     docs = fetch_context(combined)
+    print(docs)
     context = "\n\n".join(doc.page_content for doc in docs)
     system_prompt = SYSTEM_PROMPT.format(context=context)
     messages = [SystemMessage(content=system_prompt)]
+    print(messages)
     messages.extend(convert_to_messages(history))
+    print(messages)
     messages.append(HumanMessage(content=question))
+    print(messages)
     response = llm.invoke(messages)
     return response.content, docs

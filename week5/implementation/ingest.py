@@ -2,7 +2,7 @@ import os
 import glob
 from pathlib import Path
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownTextSplitter
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
@@ -10,7 +10,7 @@ from langchain_openai import OpenAIEmbeddings
 
 from dotenv import load_dotenv
 
-MODEL = "gpt-4.1-nano"
+MODEL = "gpt-5.4-nano"
 
 DB_NAME = str(Path(__file__).parent.parent / "vector_db")
 KNOWLEDGE_BASE = str(Path(__file__).parent.parent / "knowledge-base")
@@ -38,7 +38,8 @@ def fetch_documents():
 
 
 def create_chunks(documents):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=200)
+    # text_splitter = RecursiveCharacterTextSplitter(chunk_size=450, chunk_overlap=200)
+    text_splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = text_splitter.split_documents(documents)
     return chunks
 

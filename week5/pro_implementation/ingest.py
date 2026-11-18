@@ -11,7 +11,7 @@ from tenacity import retry, wait_exponential
 
 load_dotenv(override=True)
 
-MODEL = "openai/gpt-4.1-nano"
+MODEL = "openai/gpt-5.4-nano"
 
 DB_NAME = str(Path(__file__).parent.parent / "preprocessed_db")
 collection_name = "docs"
@@ -121,23 +121,50 @@ def create_chunks(documents):
     return chunks
 
 
-def create_embeddings(chunks):
+# def create_embeddings(chunks):
+#     chroma = PersistentClient(path=DB_NAME)
+#     if collection_name in [c.name for c in chroma.list_collections()]:
+#         chroma.delete_collection(collection_name)
+
+#     texts = [chunk.page_content for chunk in chunks]
+#     emb = openai.embeddings.create(model=embedding_model, input=texts).data
+#     vectors = [e.embedding for e in emb]
+
+#     collection = chroma.get_or_create_collection(collection_name)
+
+#     ids = [str(i) for i in range(len(chunks))]
+#     metas = [chunk.metadata for chunk in chunks]
+
+#     collection.add(ids=ids, embeddings=vectors, documents=texts, metadatas=metas)
+#     print(f"Vectorstore created with {collection.count()} documents")
+
+def create_embeddings(chunks, batch_size=500):
     chroma = PersistentClient(path=DB_NAME)
     if collection_name in [c.name for c in chroma.list_collections()]:
         chroma.delete_collection(collection_name)
 
-    texts = [chunk.page_content for chunk in chunks]
-    emb = openai.embeddings.create(model=embedding_model, input=texts).data
-    vectors = [e.embedding for e in emb]
-
     collection = chroma.get_or_create_collection(collection_name)
 
-    ids = [str(i) for i in range(len(chunks))]
+    texts = [chunk.page_content for chunk in chunks]
     metas = [chunk.metadata for chunk in chunks]
 
-    collection.add(ids=ids, embeddings=vectors, documents=texts, metadatas=metas)
-    print(f"Vectorstore created with {collection.count()} documents")
+    for start in tqdm(range(0, len(chunks), batch_size), desc="Creating embeddings"):
+        end = start + batch_size
+        batch_texts = texts[start:end]
+        batch_metas = metas[start:end]
+        batch_ids = [str(i) for i in range(start, min(end, len(chunks)))]
 
+        emb = openai.embeddings.create(model=embedding_model, input=batch_texts).data
+        vectors = [e.embedding for e in emb]
+
+        collection.add(
+            ids=batch_ids,
+            embeddings=vectors,
+            documents=batch_texts,
+            metadatas=batch_metas,
+        )
+
+    print(f"Vectorstore created with {collection.count()} documents")
 
 if __name__ == "__main__":
     documents = fetch_documents()
