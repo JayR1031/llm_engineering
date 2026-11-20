@@ -11,7 +11,8 @@ import json
 class AutonomousPlanningAgent(Agent):
     name = "Autonomous Planning Agent"
     color = Agent.GREEN
-    MODEL = "gpt-5.1"
+    MODEL = "gpt-6.2-sol"
+    REASONING_EFFORT = "medium"
 
     def __init__(self, collection):
         """
@@ -117,17 +118,17 @@ class AutonomousPlanningAgent(Agent):
 
     def get_tools(self):
         """
-        Return the json for the tools to be used
+        Return the json for the tools to be used with the OpenAI Responses API
         """
         return [
-            {"type": "function", "function": self.scan_function},
-            {"type": "function", "function": self.estimate_function},
-            {"type": "function", "function": self.notify_function},
+            {"type": "function", **self.scan_function},
+            {"type": "function", **self.estimate_function},
+            {"type": "function", **self.notify_function},
         ]
 
-    def handle_tool_call(self, message):
+    def handle_tool_call(self, tool_calls):
         """
-        Actually call the tools associated with this message
+        Actually call the tools associated with these Responses API function_call items
         """
         mapping = {
             "scan_the_internet_for_bargains": self.scan_the_internet_for_bargains,
@@ -135,12 +136,18 @@ class AutonomousPlanningAgent(Agent):
             "notify_user_of_deal": self.notify_user_of_deal,
         }
         results = []
-        for tool_call in message.tool_calls:
-            tool_name = tool_call.function.name
-            arguments = json.loads(tool_call.function.arguments)
+        for tool_call in tool_calls:
+            tool_name = tool_call.name
+            arguments = json.loads(tool_call.arguments)
             tool = mapping.get(tool_name)
             result = tool(**arguments) if tool else ""
-            results.append({"role": "tool", "content": result, "tool_call_id": tool_call.id})
+            results.append(
+                {
+                    "type": "function_call_output",
+                    "call_id": tool_call.call_id,
+                    "output": result if isinstance(result, str) else json.dumps(result),
+                }
+            )
         return results
 
     system_message = "You find great deals on bargain products using your tools, and notify the user of the best bargain."
@@ -163,19 +170,22 @@ class AutonomousPlanningAgent(Agent):
         self.log("Autonomous Planning Agent is kicking off a run")
         self.memory = memory
         self.opportunity = None
-        messages = self.messages[:]
+        input_items = self.messages[:]
         done = False
         while not done:
-            response = self.openai.chat.completions.create(
-                model=self.MODEL, messages=messages, tools=self.get_tools()
+            response = self.openai.responses.create(
+                model=self.MODEL,
+                reasoning={"effort": self.REASONING_EFFORT},
+                input=input_items,
+                tools=self.get_tools(),
             )
-            if response.choices[0].finish_reason == "tool_calls":
-                message = response.choices[0].message
-                results = self.handle_tool_call(message)
-                messages.append(message)
-                messages.extend(results)
+            input_items.extend(response.output)
+            tool_calls = [item for item in response.output if item.type == "function_call"]
+            if tool_calls:
+                results = self.handle_tool_call(tool_calls)
+                input_items.extend(results)
             else:
                 done = True
-        reply = response.choices[0].message.content
+        reply = response.output_text
         self.log(f"Autonomous Planning Agent completed with: {reply}")
         return self.opportunity

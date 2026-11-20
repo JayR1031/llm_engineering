@@ -1,112 +1,151 @@
-# LLM Engineering - Master AI and LLMs
+<div align="center">
 
-## Your 8 week journey to proficiency starts today
+# LLM Engineering & Autonomous Multi-Agent Systems
 
-![Voyage](assets/core.jpg)
+**End-to-End Applied AI Engineering Portfolio — Fine-Tuning (QLoRA), Production RAG, Deep Neural Networks, Serverless GPU Inference, and Autonomous Tool-Calling Agents**
 
-_If you're looking at this in Cursor, please right click on the filename in the Explorer on the left, and select "Open preview", to view the formatted version._
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-MPS%20%7C%20CUDA-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-QLoRA%20%2B%20Datasets-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/jayalexander)
+[![Modal](https://img.shields.io/badge/Modal-Serverless%20GPU-00D26A?style=for-the-badge)](https://modal.com/)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-400K%2B%20Vectors-FF6F61?style=for-the-badge)](https://www.trychroma.com/)
+[![OpenAI Responses API](https://img.shields.io/badge/OpenAI-GPT--6.2%20Responses%20API-412991?style=for-the-badge&logo=openai&logoColor=white)](https://platform.openai.com/)
 
-I'm so happy you're joining me on this path. We'll be building immensely satisfying projects in the coming weeks. Some will be easy, some will be challenging, many will ASTOUND you! The projects build on each other so you develop deeper and deeper expertise each week. One thing's for sure: you're going to have a lot of fun along the way.
+**Author:** [Jay Rodriguez](https://github.com/JayR1031) · M.S. Computer Science / Machine Learning @ Northeastern University  
+**Hugging Face Hub:** [`huggingface.co/jayalexander`](https://huggingface.co/jayalexander)
 
-Any questions, please ask me on Udemy or at ed@edwarddonner.com. More details at the top of the course resources [here](https://edwarddonner.com/2024/11/13/llm-engineering-resources/).
+</div>
 
-### Answers to the most common questions
+---
 
-[My Cursor looks different to yours (new splash screen)](https://edwarddonner.com/avatar?q=54)  
-[Can I use Gemini or free models instead of OpenAI Yes!](https://edwarddonner.com/avatar?q=8)  
-[Where are the course resources](https://edwarddonner.com/2024/11/13/llm-engineering-resources/)   
-[How does this course fit in with your others?](https://edwarddonner.com/curriculum)  
-[Can I take this course with no programming background?](https://edwarddonner.com/avatar?q=2)  
-[What job can I get after taking this course?](https://edwarddonner.com/avatar?q=3)  
+## Flagship Capstone (`week8/`): Autonomous Deal & Liquidation Arbitrage Engine
 
-### Before you begin
+The culmination of this repository is **The Price is Right** — a stateful, autonomous multi-agent system that continuously monitors retail and wholesale liquidation feeds, estimates true secondary-market value through a **3-model hybrid ML/LLM ensemble**, identifies high-margin mispricings, persists state to `memory.json`, streams live 3D vector visualizations in **Gradio**, and dispatches real-time push alerts to mobile via **Pushover**.
 
-I'm here to help you be most successful with your learning. If you hit any snafus, or if you have any ideas on how I can improve the course, please do reach out in the platform or by emailing me direct (ed@edwarddonner.com). It's always great to connect with people on LinkedIn to build up the community - you'll find me here:  
-https://www.linkedin.com/in/eddonner/   
+### System Architecture
 
-And I'm starting to build a YouTube channel with extra content - please [check it out here](https://youtube.com/@edward.donner).  
-And this is new to me, but I'm also trying out X/Twitter at [@edwarddonner](https://x.com/edwarddonner) - if you're on X, please show me how it's done 😂  
+```mermaid
+flowchart TB
+    subgraph Ingestion["1. Live Market Ingestion (ScannerAgent)"]
+        RSS["DealNews RSS Feeds"]
+        VIP["VIP Outlet Liquidation (.atom + Live .js Inventory API)"]
+        SCAN["ScannerAgent (GPT-6 Structured Outputs → Pydantic DealSelection)"]
+        RSS --> SCAN
+        VIP --> SCAN
+    end
 
-Resources to accompany the course, including the slides and useful links, are here:  
-https://edwarddonner.com/2024/11/13/llm-engineering-resources/
+    subgraph Orchestration["2. Stateful Reasoning Loop (AutonomousPlanningAgent)"]
+        PLAN["GPT-6.2-Sol (/v1/responses + Medium Reasoning Effort)"]
+        MEM[("memory.json\nDeduplication & Deal Ledger")]
+        MEM <--> PLAN
+    end
 
-My digital twin that can answer common FAQ (and get me involved!) is here:  
-https://edwarddonner.com/avatar/
+    subgraph Valuation["3. Hybrid Valuation Brain (EnsembleAgent)"]
+        PRE["Preprocessor (LLM Spec Normalization)"]
+        RAG["FrontierAgent\nChromaDB (400K+ Embeddings)\n+ SentenceTransformer + GPT"]
+        SPEC["SpecialistAgent\nFine-Tuned Llama-3.2-3B (4-bit NF4 QLoRA)\nServerless T4 GPU on Modal"]
+        DNN["NeuralNetworkAgent\nPyTorch Residual MLP\nLocal Apple Silicon (MPS)"]
+        META["Weighted / Stacked Meta-Regressor"]
+        PRE --> RAG & SPEC & DNN --> META
+    end
 
-## Instant Gratification instructions for Week 1, Day 1 - with Llama 3.2 **not** Llama 3.3
+    subgraph Action["4. Alerting & Observability"]
+        MSG["MessagingAgent\nClaude Haiku 5.5 Copywriting + Pushover Mobile API"]
+        UI["Gradio Live Dashboard\nReal-Time Logs + 3D t-SNE Embedding Space"]
+    end
 
-### Important note: see my warning about Llama3.3 below - it's too large for home computers! Stick with llama3.2 - several students have missed this warning...
+    SCAN -->|"Top 5 Verified In-Stock Deals"| PLAN
+    PLAN <-->|"Tool: estimate_true_value()"| PRE
+    META -->|"Estimated Fair Value ($)"| PLAN
+    PLAN -->|"Tool: notify_user_of_deal() (Max Margin)"| MSG
+    PLAN --> UI
+```
 
-We will start the course by installing Ollama so you can see results immediately!
-1. Download and install Ollama from https://ollama.com noting that on a PC you might need to have administrator permissions for the install to work properly. On a Mac, the current release of Ollama requires MacOS 14.0 or later; for older Macs please check the [Ollama releases](https://github.com/ollama/ollama/releases) page for a version compatible with your Mac.
-2. On a PC, start a Command prompt / Powershell (Press Win + R, type `cmd`, and press Enter). On a Mac, start a Terminal (Applications > Utilities > Terminal).
-3. Run `ollama run llama3.2` or for smaller machines try `ollama run llama3.2:1b` - **please note** steer clear of Meta's latest model llama3.3 because at 70B parameters that's way too large for most home computers!  
-4. If this doesn't work: you may need to run `ollama serve` in another Powershell (Windows) or Terminal (Mac), and try step 3 again. On a PC, you may need to be running in an Admin instance of Powershell.  
-5. And if that doesn't work on your box, I've set up this on the cloud. This is on Google Colab, which will need you to have a Google account to sign in, but is free:  https://colab.research.google.com/drive/1-_f5XZPsChvfU1sJ0QqCePtIuc55LSdu?usp=sharing
+---
 
-Any problems, please contact me!
+## Key Engineering Highlights & Custom Upgrades
 
-## Before the Setup instructions - a special note
+Beyond the core curriculum, this implementation includes custom production upgrades across ingestion, reasoning, and valuation:
 
-Early on in the course (on Day 2), I give a demo of a very cool, popular product called Claude Code. It's an AI coding tool, similar to Cursor that we use on the course. I'm only showing this as an example of Agentic AI in action; it's not a tool that's covered explicitly on this course, particularly as we're in Cursor. But if you want to use Claude Code yourself, the Quick Start guide from Anthropic is [here](https://docs.claude.com/en/docs/claude-code/quickstart).
+### 1. Live Liquidation Inventory & Variant Pricing Scraper (`week8/agents/deals.py`)
+- Extended `ScrapedDeal` beyond static DealNews HTML to ingest **VIP Outlet Shopify `.atom` liquidation feeds** (`Electronics` & `Computers/Laptops`).
+- Solved the multi-variant price-range problem (`$296 – $476`) by querying Shopify's storefront `.js` JSON endpoint per product, filtering strictly for `available == True` SKUs, discarding sold-out ghost listings, and surfacing the exact lowest in-stock variant price and condition (`New Damaged Box`, `Refurbished`, `Used`).
+- **Live Arbitrage Example Captured in [`week8/memory.json`](week8/memory.json):**
+  - *Item:* Refurbished ASUS TUF Gaming A16 (`16" WUXGA`, `Ryzen 7 7445HS`, `RTX 4050 6GB`, `16GB RAM`, `512GB SSD`)
+  - *VIP Outlet Price:* **`$679.00`** · *Ensemble Valuation:* **`$1,022.73`** · *Captured Margin:* **`+$343.73`**
 
-## OK - now on to Setup instructions
+### 2. Stateful Reasoning Tool Loop on OpenAI `/v1/responses` (`week8/agents/autonomous_planning_agent.py`)
+- Migrated `AutonomousPlanningAgent` from legacy `/v1/chat/completions` to OpenAI's **`/v1/responses`** architecture running **`gpt-6.2-sol`** with `reasoning={"effort": "medium"}`.
+- Preserves encrypted reasoning items across multi-turn `function_call` / `function_call_output` cycles (`scan_the_internet_for_bargains` → `estimate_true_value` × $N$ → `notify_user_of_deal`).
 
-After we do the Ollama quick project, and after I introduce myself and the course, we get to work with the full environment setup.  
+### 3. QLoRA Fine-Tuned Llama-3.2-3B Deployed on Modal Serverless GPUs (`week8/pricer_service2.py`)
+- Curated tokenized Amazon product datasets on Hugging Face ([`jayalexander/items_prompts_full`](https://huggingface.co/jayalexander)) aligned to power-of-2 sequence lengths for GPU Tensor Core efficiency.
+- Fine-tuned **`meta-llama/Llama-3.2-3B`** with **4-bit NormalFloat (`nf4`) double quantization + PEFT LoRA adapters** ([`jayalexander/price-2026-11-17_08.04.09`](https://huggingface.co/jayalexander/price-2026-11-17_08.04.09)).
+- Deployed as an autoscaling cloud GPU service on **Modal** using `@modal.enter()` warm container lifecycle hooks and a persistent Hugging Face `Volume` cache (`/cache`) to eliminate cold-start weight downloads.
 
-Hopefully I've done a decent job of making these guides bulletproof - but please contact me right away if you hit roadblocks:
+### 4. Multi-Paradigm Valuation Ensemble & Meta-Learning (`week8/day2.ipynb`, `week8/agents/ensemble_agent.py`)
+- Combines three orthogonal modeling paradigms whose failure modes cancel out:
+  1. **Retrieval-Augmented Frontier LLM (`FrontierAgent`):** Queries `ChromaDB` (`all-MiniLM-L6-v2` 384-d embeddings over 400,000+ products) to ground zero-shot LLM pricing in 5 nearest-neighbor comparables.
+  2. **Parametric Domain Specialist (`SpecialistAgent`):** Remote RPC call to the QLoRA-tuned Llama-3.2-3B model on Modal.
+  3. **Deep Residual Neural Network (`NeuralNetworkAgent`):** Deep PyTorch MLP with `ResidualBlock` skip connections trained with `L1Loss` on Apple Silicon (`mps`).
+- Explored **Stacking (Level-1 Linear Regression Meta-Learner)** on held-out `validation` predictions (`frontier`, `specialist`, `dnn`, `min`, `max`) to learn optimal trust weights and systematic bias correction without leaking `test` data.
 
-Setup instructions: [Setup Instructions All Platforms](setup/SETUP-new.md)
+---
 
-### An important point on API costs (which are optional! No need to spend if you don't wish)
+## 8-Week Engineering Progression
 
-During the course, I'll suggest you try out the leading models at the forefront of progress, known as the Frontier models. I'll also suggest you run open-source models using Google Colab. These services have some charges, but I'll keep cost minimal - like, a few cents at a time. And I'll provide alternatives if you'd prefer not to use them.
+| Module | Core Focus | Key Systems & Artifacts Built |
+| :--- | :--- | :--- |
+| **[`week1/`](week1/)** | **Frontier & Local LLM Foundations** | Multi-provider API orchestration (`OpenAI`, `Anthropic`, `Ollama`), streaming token pipelines, web-scraping brochure generator. |
+| **[`week2/`](week2/)** | **Multi-Modal UIs, Tool Calling & Multi-Agent Chat** | Function-calling assistants, SQLite-backed airline agent, adversarial/collaborative multi-LLM conversations, Gradio UIs + TTS/vision. |
+| **[`week3/`](week3/)** | **Hugging Face Ecosystem & Open-Source Pipelines** | Tokenizers (`AutoTokenizer`), quantized `transformers` pipelines on GPU, Whisper speech-to-minutes meeting synthesizer, synthetic data generation. |
+| **[`week4/`](week4/)** | **Code Generation & High-Performance Transpilation** | Automated Python $\rightarrow$ C++ / Rust performance transpilers achieving orders-of-magnitude execution speedups benchmarked natively on Apple Silicon. |
+| **[`week5/`](week5/)** | **Production RAG From Scratch & Vector Stores** | Chunking strategies, embedding spaces (`t-SNE` 2D/3D projections), `ChromaDB` vector retrieval, query rewriting, reranking, and RAG evaluation (`MRR`, `nDCG`, `Recall@K`). |
+| **[`week6/`](week6/)** | **Classical ML vs. Deep Learning vs. Frontier LLMs** | 800K+ Amazon dataset curation, async **Groq Batch API** preprocessing, rigorous `Tester` benchmark harness (`MAE`, `MSE`, $R^2$), `RandomForest` / `XGBoost` vs. custom PyTorch **Residual Deep Neural Network**. |
+| **[`week7/`](week7/)** | **Parameter-Efficient Fine-Tuning (PEFT / QLoRA)** | 4-bit `bitsandbytes` NF4 quantization, LoRA rank/alpha/target-module ablation, `SFTTrainer` training runs tracked in Weights & Biases, pushing adapters to Hugging Face Hub. |
+| **[`week8/`](week8/)** | **Serverless GPU Deployment & Autonomous Agentic AI** | Modal GPU microservices, 400K-item Chroma RAG, 3-model Ensemble, live DealNews + VIP Outlet RSS/JSON scrapers, `gpt-6.2-sol` `/v1/responses` planner, Claude + Pushover mobile alerts, live Gradio dashboard. |
 
-Please do monitor your API usage to ensure you're comfortable with spend; I've included links below. There's no need to spend anything more than a couple of dollars for the entire course. Some AI providers such as OpenAI require a minimum credit like \$5 or local equivalent; we should only spend a fraction of it, and you'll have plenty of opportunity to put it to good use in your own projects. During Week 7 you have an option to spend a bit more if you're enjoying the process - I spend about \$10 myself and the results make me very happy indeed! But it's not necessary in the least; the important part is that you focus on learning.
+---
 
-### Free alternative to Paid APIs
+## Quickstart: Running the Capstone (`week8/`)
 
-See [Guide 9](guides/09_ai_apis_and_ollama.ipynb) in the guides directory for the detailed approach with exact code for Ollama, Gemini, OpenRouter and more!
+### 1. Environment & Dependencies
+This repo uses **[`uv`](https://docs.astral.sh/uv/)** for fast, reproducible Python 3.12 dependency management:
 
-### How this Repo is organized
+```bash
+git clone https://github.com/JayR1031/llm_engineering.git
+cd llm_engineering
+uv sync
+```
 
-There are folders for each of the "weeks", representing modules of the class, culminating in a powerful autonomous Agentic AI solution in Week 8 that draws on many of the prior weeks.    
-Follow the setup instructions above, then open the Week 1 folder and prepare for joy.
+Create a `.env` file in the repository root:
 
-### The most important part
+```bash
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+HF_TOKEN=hf_...
+PUSHOVER_USER=u...
+PUSHOVER_TOKEN=a...
+```
 
-The mantra of the course is: the best way to learn is by **DOING**. I don't type all the code during the course; I execute it for you to see the results. You should work along with me or after each lecture, running each cell, inspecting the objects to get a detailed understanding of what's happening. Then tweak the code and make it your own. There are juicy challenges for you throughout the course. I'd love it if you wanted to submit a Pull Request for your code (see the Github guide in the guides folder) and I can make your solutions available to others so we share in your progress; as an added benefit, you'll be recognized in GitHub for your contribution to the repo. While the projects are enjoyable, they are first and foremost designed to be _educational_, teaching you business skills that can be put into practice in your work.
+### 2. Deploy the Fine-Tuned Llama-3.2-3B Specialist to Modal
+```bash
+cd week8
+uv run modal deploy pricer_service2.py
+```
 
-## Starting in Week 3, we'll also be using Google Colab for running with GPUs
+### 3. Launch the Autonomous Deal-Hunting Dashboard
+*(Note: Ensure `week8/products_vectorstore` is populated via `week8/day2.ipynb` and `week8/deep_neural_network.pth` is placed in `week8/`.)*
 
-You should be able to use the free tier or minimal spend to complete all the projects in the class. I personally signed up for Colab Pro+ and I'm loving it - but it's not required.
+```bash
+cd week8
+uv run price_is_right.py
+```
 
-Learn about Google Colab and set up a Google account (if you don't already have one) [here](https://colab.research.google.com/)
+This launches the **Gradio** web interface in your browser, renders the 3D `t-SNE` embedding plot of your product vector database, runs the autonomous `gpt-6.2-sol` planning loop every 5 minutes, logs live multi-agent collaboration, and sends high-margin deal alerts directly to your phone via Pushover.
 
-The colab links are in the folders for Week 3 and Week 7 - if you open up the lab for each day, you'll find a direct link to the colab.
+---
 
-### Monitoring API charges
+## Acknowledgments
 
-You can keep your API spend very low throughout this course; you can monitor spend at the dashboards: [here](https://platform.openai.com/usage) for OpenAI, [here](https://console.anthropic.com/settings/cost) for Anthropic.
-
-The charges for the exercises in this course should always be quite low, but if you'd prefer to keep them minimal, then be sure to always choose the cheapest versions of models:
-1. For OpenAI: Always use model `gpt-6-luna` in the code
-2. For Anthropic: Always use model `claude-haiku-5-5` in the code instead of the other Claude models
-3. During week 7, look out for my instructions for using the cheaper dataset
-
-Please do message me or email me at ed@edwarddonner.com if this doesn't work or if I can help with anything. I can't wait to hear how you get on.
-
-<table style="margin: 0; text-align: left;">
-    <tr>
-        <td style="width: 150px; height: 150px; vertical-align: middle;">
-            <img src="assets/resources.jpg" width="150" height="150" style="display: block;" />
-        </td>
-        <td>
-            <h2 style="color:#f71;">Other resources</h2>
-            <span style="color:#f71;">I've put together this webpage with useful resources for the course. This includes links to all the slides.<br/>
-            <a href="https://edwarddonner.com/2024/11/13/llm-engineering-resources/">https://edwarddonner.com/2024/11/13/llm-engineering-resources/</a><br/>
-            Please keep this bookmarked, and I'll continue to add more useful links there over time.
-            </span>
-        </td>
-    </tr>
-</table>
+Built while completing and extending [Ed Donner's LLM Engineering curriculum](https://github.com/ed-donner/llm_engineering) ([original setup guides](./setup/SETUP-new.md)).

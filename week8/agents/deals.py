@@ -11,6 +11,9 @@ feeds = [
     "https://www.dealnews.com/c142/Electronics/?rss=1",
     "https://www.dealnews.com/c39/Computers/?rss=1",
     "https://www.dealnews.com/f1912/Smart-Home/?rss=1",
+    "https://vipoutlet.com/collections/category-electronics.atom",
+    "https://vipoutlet.com/collections/category-electronics-computers-laptops.atom"
+    
 ]
 
 # You could also add: "https://www.dealnews.com/c238/Automotive/?rss=1"
@@ -45,24 +48,70 @@ class ScrapedDeal:
     url: str
     details: str
     features: str
+    available: bool
 
     def __init__(self, entry: Dict[str, str]):
         """
         Populate this instance based on the provided dict
         """
         self.title = entry["title"]
-        self.summary = extract(entry["summary"])
+        self.summary = extract(entry.get("summary", ""))
         self.url = entry["links"][0]["href"]
-        stuff = requests.get(self.url).content
+        self.available = True
+
+        if "vipoutlet.com/products/" in self.url:
+            self._populate_shopify()
+        else:
+            self._populate_html()
+
+        self.truncate()
+
+    def _populate_shopify(self):
+        """
+        Fetch live variant pricing, in-stock status, and specs from Shopify's .js endpoint
+        """
+        resp = requests.get(f"{self.url.rstrip('/')}.js", timeout=15)
+        if resp.ok:
+            data = resp.json()
+            in_stock = [v for v in data.get("variants", []) if v.get("available")]
+            if not in_stock:
+                self.available = False
+                self.details = ""
+                self.features = ""
+                return
+            best_variant = min(in_stock, key=lambda v: v["price"])
+            price_dollars = best_variant["price"] / 100.0
+            condition = best_variant.get("title", "")
+            raw_desc = BeautifulSoup(data.get("description", ""), "html.parser").get_text(" ", strip=True)
+            content = f"Price: ${price_dollars:.2f} (Condition: {condition}). {raw_desc}"
+        else:
+            content = BeautifulSoup(self.summary, "html.parser").get_text(" ", strip=True)
+
+        if "Product Details:" in content:
+            self.details, self.features = content.split("Product Details:", 1)
+        elif "Features" in content:
+            self.details, self.features = content.split("Features", 1)
+        else:
+            self.details = content
+            self.features = ""
+
+    def _populate_html(self):
+        """
+        Fetch DealNews (or generic RSS) HTML page and extract details + features
+        """
+        stuff = requests.get(self.url, timeout=15).content
         soup = BeautifulSoup(stuff, "html.parser")
-        content = soup.find("div", class_="content-section").get_text()
+        section = soup.find("div", class_="content-section")
+        if section:
+            content = section.get_text()
+        else:
+            content = BeautifulSoup(self.summary, "html.parser").get_text(" ", strip=True)
         content = content.replace("\nmore", "").replace("\n", " ")
         if "Features" in content:
             self.details, self.features = content.split("Features", 1)
         else:
             self.details = content
             self.features = ""
-        self.truncate()
 
     def truncate(self):
         """
@@ -90,11 +139,18 @@ class ScrapedDeal:
         Retrieve all deals from the selected RSS feeds
         """
         deals = []
+        seen_urls = set()
         feed_iter = tqdm(feeds) if show_progress else feeds
         for feed_url in feed_iter:
             feed = feedparser.parse(feed_url)
             for entry in feed.entries[:10]:
-                deals.append(cls(entry))
+                url = entry["links"][0]["href"]
+                if url in seen_urls:
+                    continue
+                deal = cls(entry)
+                if deal.available:
+                    deals.append(deal)
+                    seen_urls.add(url)
                 time.sleep(0.05)
         return deals
 

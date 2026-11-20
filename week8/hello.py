@@ -22,8 +22,8 @@ def hello() -> str:
 # New - added thanks to student Tue H.!
 
 
-@app.function(image=image, region="eu")
-def hello_europe() -> str:
+@app.function(image=image, region="us-east")
+def hello_us_east() -> str:
     import requests
 
     response = requests.get("https://ipinfo.io/json")
